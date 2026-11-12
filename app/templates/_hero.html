@@ -1,0 +1,86 @@
+{# Tonight's best bet. Rendered into #hero by the page, and again by /spin,
+   /skip — each of which posts the current view from the hidden #view form. #}
+{% from "_macros.html" import poster, spin_icon, check_icon, play_icon, view_link %}
+{% if not film and drops %}
+{% set n = [view.genre, view.max_runtime, view.both_lists]|select|list|length %}
+<section class="loosen" aria-labelledby="loosen-title">
+  <span class="eyebrow">Nothing {{ 'on Plex' if view.scope == 'plex' else 'on your watchlists' }}
+    {%- if n %} fits {{ {1: 'that filter', 2: 'both filters', 3: 'all three filters'}[n] }}{% else %} is left unseen{% endif %}</span>
+  <h2 id="loosen-title">Drop one and see what comes back</h2>
+  <div class="drops">
+    {% for d in drops %}
+    <a class="drop{{ ' best' if loop.first else '' }}" {{ view_link(d.params) }}>{{ d.label }} <span class="n">{{ d.count }} film{{ '' if d.count == 1 else 's' }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+{% elif not film %}
+<div class="hero">
+  <div class="empty" style="flex: 1">
+    {% if view.scope == 'plex' %}
+    Nothing on Plex fits that. <a href="/{% if view.params(scope='all') %}?{{ view.params(scope='all')|urlencode }}{% endif %}">Look across everything you want</a>, or loosen a filter.
+    {% else %}
+    Nothing fits these filters. Loosen one, or check Admin if this is a fresh install.
+    {% endif %}
+  </div>
+</div>
+{% else %}
+{% set both = view.who == 'both' %}
+{% set whofor = 'both of you' if both else view.who|capitalize %}
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-art" data-film-open hx-get="/film/{{ film.tmdb_id }}" hx-target="#modal" hx-swap="innerHTML">
+    {{ poster(film, 342, '(max-width: 600px) 200px, 280px', 500) }}
+  </div>
+  <div class="hero-info">
+    <div class="hero-tags">
+      <span class="eyebrow">{{ 'Tonight on Plex' if view.scope == 'plex' else "Tonight's best bet" }} — for {{ whofor }}</span>
+      {% if film.on_plex %}<span class="pill plex">{{ play_icon() }} On Plex</span>
+      {% else %}<span class="pill missing">Not on Plex yet</span>{% endif %}
+    </div>
+    <h1 id="hero-title">{{ film.title }}</h1>
+    <p class="meta">
+      {%- set bits = [film.year, (film.runtime ~ ' min') if film.runtime else None, film.director, (film.genres or '').replace(', ', ' / ') or None] -%}
+      {{ bits|select|join('  ·  ') }}
+    </p>
+
+    <div class="fitbox">
+      <span class="big-num">{{ film.score }}<small>%</small></span>
+      <span class="label">
+        <strong>likely for {{ 'both' if both else whofor }}</strong>
+        <span>{{ 'leans toward the less keen of you' if both else 'from ' ~ whofor ~ "'s ratings alone" }}</span>
+      </span>
+      <div class="fitrows">
+        {% for p in people() %}
+        <div class="fitrow">
+          <span class="who {{ p.cls }}">{{ p.initial }}</span>
+          <span class="bar {{ p.cls }}" aria-hidden="true"><i style="width: {{ film.fits[p.key] }}%"></i></span>
+          <span class="n">{{ film.fits[p.key] }}</span>
+          <span class="sr-only">{{ p.name }}: {{ film.fits[p.key] }} percent</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <ul class="reasons">
+      {% for p in people() %}
+      <li class="{{ p.cls }}"><span class="dot" aria-hidden="true"></span><span><strong>{{ p.name }}</strong> — {{ reasons[p.key] }}{% if p.key in film.wanted_by %} <span class="muted">· on {{ p.name }}'s watchlist</span>{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+
+    <div class="actions">
+      {% if film.on_plex %}
+      <button type="button" class="btn primary" hx-post="/watched" hx-include="#view"
+              hx-vals='{"tmdb_id": {{ film.tmdb_id }}}' hx-target="#hero" hx-indicator="#hero">{{ check_icon() }} We watched it</button>
+      {% else %}
+      {% set tmdb_id = film.tmdb_id %}{% set on = film.on_get_list %}{% set primary = true %}
+      {% include "_get_button.html" %}
+      {% endif %}
+      <button type="button" class="btn" hx-post="/spin" hx-include="#view"
+              hx-vals='{"exclude": {{ film.tmdb_id }}}' hx-target="#hero" hx-indicator="#hero">{{ spin_icon() }} Spin again</button>
+      <button type="button" class="btn" data-film-open hx-get="/film/{{ film.tmdb_id }}"
+              hx-target="#modal" hx-swap="innerHTML">Details</button>
+      <button type="button" class="btn text" hx-post="/skip" hx-include="#view"
+              hx-vals='{"tmdb_id": {{ film.tmdb_id }}}' hx-target="#hero" hx-indicator="#hero">Not tonight</button>
+    </div>
+  </div>
+</section>
+{% endif %}

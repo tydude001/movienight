@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}{{ year }} Wrapped · Movie Night{% endblock %}
+{% macro stars(x) %}{{ '%g'|format(x) if x is not none else '–' }}{% endmacro %}
+{% block content %}
+{% if not w %}
+<h1 class="page-title">{{ year }} Wrapped</h1>
+<p class="muted wr-empty">No Letterboxd diary entries for {{ year }} yet. Wrapped counts diary entries only:
+  the nightly sync adds new ones, and a fresh export imported from <a href="/admin">Admin</a> fills in the rest.</p>
+{% if years %}<p class="wr-years">{% for y in years %}<a href="/wrapped/{{ y }}">{{ y }}</a>{% endfor %}</p>{% endif %}
+{% else %}
+{% set A = w.user_a %}{% set B = w.user_b %}
+{% set NA = A|capitalize %}{% set NB = B|capitalize %}
+{% set t = w.together %}{% set pa = w.people[A] %}{% set pb = w.people[B] %}
+{% set ns = namespace(n=0) %}
+
+<div class="wr-head">
+  <h1 class="page-title">{{ w.year }} Wrapped</h1>
+  {% if years|length > 1 %}
+  <nav class="wr-years" aria-label="Year">
+    {% for y in years %}<a href="/wrapped/{{ y }}" {% if y == w.year %}aria-current="page"{% endif %}>{{ y }}</a>{% endfor %}
+  </nav>
+  {% endif %}
+</div>
+
+<section class="wr-stage">
+  <div class="wr-player" id="wr-player" aria-roledescription="story" aria-label="Wrapped cards" hidden>
+    <div class="wr-bars" id="wr-bars"></div>
+    <div id="wr-slot"></div>
+    <button class="wr-tap wr-prev" id="wr-tap-prev" type="button" aria-label="Previous card"></button>
+    <button class="wr-tap wr-next" id="wr-tap-next" type="button" aria-label="Next card"></button>
+    <div class="wr-controls">
+      <button id="wr-btn-prev" type="button">Back</button>
+      <span class="wr-count" id="wr-count"></span>
+      <button id="wr-btn-next" type="button">Next</button>
+    </div>
+  </div>
+
+  <div class="wr-notes">
+    <h2>How it's counted</h2>
+    <dl>
+      <dt>A watch</dt>
+      <dd>One Letterboxd diary entry, on the date it was watched. A film marked "watched" with no
+        diary entry doesn't count. A rewatch is another entry, so it counts every time.</dd>
+      <dt>Catch-up days</dt>
+      <dd>Five or more diary entries by one person on one date count as a catch-up and are left out.
+        {% if w.excluded %}This year:
+          {% for x in w.excluded %}{{ x.user|capitalize }} on {{ x.date }} ({{ x.entries }} entries){% if not loop.last %}, {% endif %}{% endfor %}.
+        {% else %}None this year.{% endif %}</dd>
+      <dt><span class="wr-key" style="background:var(--screen)"></span>Together</dt>
+      <dd>The same film in both diaries on the same date.</dd>
+      <dt>Hours</dt>
+      <dd>TMDb runtime for each watch.</dd>
+      <dt>Actors</dt>
+      <dd>The first six billed cast of each film, from TMDb.</dd>
+      {% if not w.complete %}
+      <dt>So far</dt>
+      <dd>The year isn't over: this covers {{ w.span }}. Import fresh Letterboxd exports at the end of
+        the year to pick up any edits made since.</dd>
+      {% endif %}
+    </dl>
+  </div>
+</section>
+
+<section class="wr-sheet">
+  <h2>Every card</h2>
+  <div class="wr-grid" id="wr-grid">
+
+  {# ── opener ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Opener"><div class="wr-in">
+    <span class="wr-eyebrow">Movie Night</span>
+    <div class="wr-big" style="font-size:38cqw;margin-top:auto">{{ w.year }}</div>
+    <p class="wr-hl" style="font-size:22cqw;margin-top:-2cqw">Wrapped</p>
+    <p class="wr-sub"><span class="wr-a">{{ NA }}</span> and <span class="wr-b">{{ NB }}</span>, one year of movie nights.</p>
+    <div class="wr-foot" style="margin-top:6cqw"><span>{{ w.span }}</span><span>tap →</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Opener</figcaption></figure>
+
+  {% if t.films %}
+  {# ── together ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Together"><div class="wr-in">
+    <span class="wr-eyebrow">Side by side</span>
+    <div class="wr-big wr-w">{{ t.films }}</div>
+    <p class="wr-hl">films together{% if t.nights != t.films %}, over {{ t.nights }} nights{% endif %}</p>
+    <p class="wr-sub">That's {{ t.hours }} hours of the same screen.
+      {{ NA }} watched {{ pa.watches }} films this year, {{ pa.solo }} without {{ NB }};
+      {{ NB }} watched {{ pb.watches }}, {{ pb.solo }} without {{ NA }}.</p>
+    <div class="wr-foot"><span>same film · same day</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Together</figcaption></figure>
+  {% endif %}
+
+  {% if w.venn %}{% set v = w.venn %}
+  {# ── hours ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Hours"><div class="wr-in">
+    <span class="wr-eyebrow">Hours watched</span>
+    <svg viewBox="0 0 {{ v.w }} {{ v.h }}" role="img"
+         aria-label="{{ NA }} {{ pa.hours }} hours, {{ NB }} {{ pb.hours }} hours, {{ t.hours }} of them together">
+      <defs><clipPath id="wr-clip-{{ ns.n }}"><circle cx="{{ v.ax }}" cy="{{ v.cy }}" r="{{ v.ar }}"/></clipPath></defs>
+      <circle cx="{{ v.bx }}" cy="{{ v.cy }}" r="{{ v.br }}" fill="#ffb36b" fill-opacity=".85"/>
+      <circle cx="{{ v.ax }}" cy="{{ v.cy }}" r="{{ v.ar }}" fill="#6ca6ff" fill-opacity=".85"/>
+      <circle cx="{{ v.bx }}" cy="{{ v.cy }}" r="{{ v.br }}" fill="#f4f1ea" clip-path="url(#wr-clip-{{ ns.n }})"/>
+      {% if t.hours %}<text x="{{ v.label_x }}" y="{{ v.cy + 4 }}" text-anchor="middle" font-size="11" font-weight="600" fill="#0a0a0d">{{ t.hours }}h</text>{% endif %}
+    </svg>
+    <div class="wr-who">
+      <div class="wr-a"><div class="wr-n">{{ pa.hours }}h</div><div class="wr-l">{{ NA }}, all of it</div></div>
+      <div class="wr-b"><div class="wr-n">{{ pb.hours }}h</div><div class="wr-l">{{ NB }}, all of it</div></div>
+    </div>
+    <p class="wr-sub">On your own: {{ NA }} {{ pa.solo_hours }} hours, {{ NB }} {{ pb.solo_hours }}.</p>
+    <div class="wr-foot"><span>circles drawn to scale</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Hours</figcaption></figure>
+  {% endif %}
+
+  {% if t.best_month %}
+  {# ── busiest month ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Busiest month"><div class="wr-in">
+    <span class="wr-eyebrow">Busiest month together</span>
+    <p class="wr-hl" style="font-size:{{ 20 if t.best_month|length <= 6 else 15 }}cqw">{{ t.best_month }}</p>
+    <p class="wr-sub">{{ t.best_month_count }} film{{ 's' if t.best_month_count != 1 }} together{% if t.best_month_pick %}, best of them "{{ t.best_month_pick.title }}"{% endif %}.</p>
+    <svg viewBox="0 0 240 130" role="img" aria-label="Films together per month">
+      {% for c in t.months %}{% set x = 4 + loop.index0 * 20 %}
+        {% if loop.index <= t.months_covered %}
+          {% set h = (c / t.month_max * 90)|round(1) %}
+          <rect x="{{ x }}" y="{{ 110 - h }}" width="14" height="{{ h }}" fill="{{ '#f4f1ea' if c == t.month_max else '#c9c6d0' }}"/>
+          {% if c == t.month_max %}<text x="{{ x + 7 }}" y="{{ 104 - h }}" text-anchor="middle" font-size="9" fill="#f4f1ea">{{ c }}</text>{% endif %}
+        {% else %}
+          <rect x="{{ x + 0.5 }}" y="104.5" width="13" height="6" fill="none" stroke="#3a3a45" stroke-dasharray="2 2"/>
+        {% endif %}
+        <text x="{{ x + 7 }}" y="124" text-anchor="middle" font-size="8" fill="#a3a1ad">{{ 'JFMAMJJASOND'[loop.index0] }}</text>
+      {% endfor %}
+    </svg>
+    <div class="wr-foot"><span>{% if not w.complete %}dashed = still to come{% else %}films together per month{% endif %}</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Busiest month</figcaption></figure>
+
+  {# ── weekday ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Movie night"><div class="wr-in">
+    <span class="wr-eyebrow">Movie night is</span>
+    <p class="wr-hl" style="font-size:{{ 19 if t.best_day_name|length <= 8 else 15 }}cqw">{{ t.best_day_name }}</p>
+    <p class="wr-sub">{{ t.best_day_count }} of your {{ t.films }} films together.</p>
+    <svg viewBox="0 0 240 150" role="img" aria-label="Films together by weekday">
+      {% for c in t.weekdays %}{% set y = 6 + loop.index0 * 20 %}{% set wd = (c / t.weekday_max * 195)|round(1) %}
+        {% set top = c == t.weekday_max %}
+        <text x="0" y="{{ y + 8 }}" font-size="9" fill="{{ '#f4f1ea' if top else '#a3a1ad' }}">{{ ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][loop.index0] }}</text>
+        <rect x="30" y="{{ y }}" width="{{ wd }}" height="11" fill="{{ '#f4f1ea' if top else '#3a3a45' }}"/>
+        {% if top %}<text x="{{ 30 + wd - 5 }}" y="{{ y + 9 }}" text-anchor="end" font-size="9" font-weight="600" fill="#0a0a0d">{{ c }}</text>
+        {% elif c %}<text x="{{ 30 + wd + 5 }}" y="{{ y + 9 }}" font-size="9" fill="#c9c6d0">{{ c }}</text>{% endif %}
+      {% endfor %}
+    </svg>
+    <div class="wr-foot"><span>films together, by weekday</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Movie night</figcaption></figure>
+  {% endif %}
+
+  {% if t.rated %}
+  {# ── in sync ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="In sync"><div class="wr-in">
+    <span class="wr-eyebrow">Rating the same film</span>
+    <div class="wr-big wr-w" style="font-size:34cqw">{{ t.exact }}<span class="wr-of">/{{ t.rated }}</span></div>
+    <p class="wr-hl">times you gave the exact same stars</p>
+    <p class="wr-sub">{{ t.within_half }} of the {{ t.rated }} were within half a star. On average you were
+      {{ '%g'|format(t.avg_gap) }}★ apart. {{ NA }} rated higher {{ t.a_higher }} times, {{ NB }} {{ t.b_higher }}.</p>
+    <div class="wr-foot"><span>both rated, same night</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · In sync</figcaption></figure>
+  {% endif %}
+
+  {% if t.clash %}{% set c = t.clash %}
+  {# ── clash ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Biggest clash"><div class="wr-in">
+    <span class="wr-eyebrow">Biggest disagreement</span>
+    <p class="wr-film">{{ c.title }}</p>
+    <div class="wr-who">
+      <div class="wr-a"><div class="wr-n">{{ stars(c.a) }}★</div><div class="wr-l">{{ NA }}</div></div>
+      <div class="wr-b"><div class="wr-n">{{ stars(c.b) }}★</div><div class="wr-l">{{ NB }}</div></div>
+    </div>
+    <p class="wr-sub">{{ '%g'|format(c.gap) }} stars apart.{% if c.others_within_one and c.gap > 1 %} Every other film you watched together landed within one star.{% endif %}</p>
+    <div class="wr-foot"><span>{% if c.runners_up %}runners-up: {{ c.runners_up|join(', ') }}{% else %}watched {{ c.date }}{% endif %}</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Biggest clash</figcaption></figure>
+  {% endif %}
+
+  {% if t.favourites %}
+  {# ── favourites ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="You both loved"><div class="wr-in">
+    <span class="wr-eyebrow">You both loved</span>
+    <ul class="wr-list">
+      {% for f in t.favourites %}
+      <li><b>{{ f.title }}</b><span class="wr-stars"><span class="wr-a">{{ stars(f.a) }}</span> · <span class="wr-b">{{ stars(f.b) }}</span></span></li>
+      {% endfor %}
+    </ul>
+    <p class="wr-sub">Ranked by your combined stars.</p>
+    <div class="wr-foot"><span><span class="wr-a">{{ NA }}</span> · <span class="wr-b">{{ NB }}</span></span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · You both loved</figcaption></figure>
+  {% endif %}
+
+  {% if t.genres %}
+  {# ── genre ── #}
+  {% set ns.n = ns.n + 1 %}{% set g = t.genres[0] %}
+  <figure><article class="wr-card" data-name="Genre"><div class="wr-in">
+    <span class="wr-eyebrow">Genre of the year</span>
+    <p class="wr-hl" style="font-size:{{ 21 if g.name|length <= 7 else 13 }}cqw">{{ g.name }}</p>
+    <p class="wr-sub">{{ g.count }} of your {{ t.films }} films together.{% if t.genres|length > 1 %}
+      Then {{ t.genres[1:]|map(attribute='name')|map('lower')|join(', ') }}.{% endif %}</p>
+    {# Each person's favourite after the shared one — "Comedy / Comedy" says nothing. #}
+    {% set ga = pa.top_genres|rejectattr('name', 'eq', g.name)|first %}
+    {% set gb = pb.top_genres|rejectattr('name', 'eq', g.name)|first %}
+    {% if ga and gb %}
+    <div class="wr-who">
+      <div class="wr-a"><div class="wr-n wr-n-sm">{{ ga.name }}</div><div class="wr-l">{{ NA }}'s next most watched</div></div>
+      <div class="wr-b"><div class="wr-n wr-n-sm">{{ gb.name }}</div><div class="wr-l">{{ NB }}'s next most watched</div></div>
+    </div>
+    {% endif %}
+    <div class="wr-foot"><span>a film can count for several genres</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Genre</figcaption></figure>
+  {% endif %}
+
+  {% if t.director %}{% set d = t.director %}
+  {# ── director ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Director"><div class="wr-in">
+    <span class="wr-eyebrow">Director of the year</span>
+    <p class="wr-film">{{ d.name }}</p>
+    <ul class="wr-list">
+      {% for f in d.films[:4] %}<li><b>{{ f.title }}</b><span class="wr-stars">{{ f.year or '' }}</span></li>{% endfor %}
+    </ul>
+    <p class="wr-sub">{{ d.nights }} films together{% if d.avg %}, {{ '%g'|format(d.avg) }}★ on average between you{% endif %}.</p>
+    <div class="wr-foot"><span>most films together by one director</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Director</figcaption></figure>
+  {% endif %}
+
+  {% if t.actor %}{% set ac = t.actor %}
+  {# ── actor together ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Actor"><div class="wr-in">
+    <span class="wr-eyebrow">The actor you rated highest together</span>
+    <p class="wr-film">{{ ac.name }}</p>
+    <ul class="wr-list">
+      {% for f in ac.films[:4] %}<li><b>{{ f.title }}</b><span class="wr-stars"><span class="wr-a">{{ stars(f.a) }}</span> · <span class="wr-b">{{ stars(f.b) }}</span></span></li>{% endfor %}
+    </ul>
+    <p class="wr-sub">{{ '%g'|format(ac.avg) }}★ on average between you{% if ac.runner_up %}. Runner-up: {{ ac.runner_up }}{% endif %}.</p>
+    <div class="wr-foot"><span>top-billed cast · {{ ac.min_nights }}+ nights together</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Actor</figcaption></figure>
+  {% endif %}
+
+  {% if pa.face or pb.face %}
+  {# ── faces ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Faces"><div class="wr-in">
+    <span class="wr-eyebrow">The face you saw most</span>
+    <div class="wr-who">
+      {% for p, cls in [(pa, 'wr-a'), (pb, 'wr-b')] %}
+      <div class="{{ cls }}">{% if p.face %}<div class="wr-n wr-n-sm">{{ p.face.name }}</div><div class="wr-l">{{ p.face.count }} films</div>{% else %}<div class="wr-l">nobody twice</div>{% endif %}</div>
+      {% endfor %}
+    </div>
+    {% for p, name, cls in [(pa, NA, 'wr-a'), (pb, NB, 'wr-b')] %}{% if p.face %}
+    <p class="wr-sub"><span class="{{ cls }}">{{ name }}</span>: {{ p.face.films[:3]|join(', ') }}{% if p.face.films|length > 3 %} and {{ p.face.films|length - 3 }} more{% endif %}{% if p.face.avg %}, {{ '%g'|format(p.face.avg) }}★ on average{% endif %}.</p>
+    {% endif %}{% endfor %}
+    <div class="wr-foot"><span>ties go to the higher-rated</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Faces</figcaption></figure>
+  {% endif %}
+
+  {# ── on your own ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="On your own"><div class="wr-in">
+    <span class="wr-eyebrow">On your own</span>
+    <div class="wr-who">
+      <div class="wr-a"><div class="wr-n">{{ pa.solo }}</div><div class="wr-l">{{ NA }}, {{ pa.solo_hours }}h</div></div>
+      <div class="wr-b"><div class="wr-n">{{ pb.solo }}</div><div class="wr-l">{{ NB }}, {{ pb.solo_hours }}h</div></div>
+    </div>
+    {% for p, name, cls in [(pa, NA, 'wr-a'), (pb, NB, 'wr-b')] %}{% if p.solo_best %}
+    <p class="wr-sub"><span class="{{ cls }}">{{ name }}</span>'s best solo watch: {{ p.solo_best[0].title }}, {{ stars(p.solo_best[0].rating) }}★.</p>
+    {% endif %}{% endfor %}
+    <p class="wr-sub">Rewatches: {{ NA }} {{ pa.rewatches }}, {{ NB }} {{ pb.rewatches }}.</p>
+    <div class="wr-foot"><span>films the other wasn't there for</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · On your own</figcaption></figure>
+
+  {% if t.first %}
+  {# ── bookends ── #}
+  {% set ns.n = ns.n + 1 %}
+  <figure><article class="wr-card" data-name="Bookends"><div class="wr-in">
+    <span class="wr-eyebrow">First and {{ 'last' if w.complete else 'latest' }} together</span>
+    <ul class="wr-list">
+      {% for f in t.first %}<li><b>{{ f.title }}</b><span class="wr-stars">{{ f.day }}</span></li>{% endfor %}
+      {% if t.films > 4 %}<li class="wr-gap"><span>…{{ t.films - 4 }} more…</span></li>{% endif %}
+      {% if t.films > 2 %}{% for f in t.last[-(t.films - 2 if t.films < 4 else 2):] %}<li><b>{{ f.title }}</b><span class="wr-stars">{{ f.day }}</span></li>{% endfor %}{% endif %}
+    </ul>
+    <p class="wr-sub">{{ t.films }} films together{% if not w.complete %} so far{% endif %}.</p>
+    <div class="wr-foot"><span>see you in {{ w.year + 1 }}</span><span>{{ '%02d'|format(ns.n) }}</span></div>
+  </div></article><figcaption>{{ '%02d'|format(ns.n) }} · Bookends</figcaption></figure>
+  {% endif %}
+
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  // The cards are rendered once, as the contact sheet; the player shows a
+  // clone of one at a time. Without JS the sheet alone is the whole page.
+  const grid = document.getElementById('wr-grid');
+  const player = document.getElementById('wr-player');
+  if (!grid || !player) return;
+  const cards = [...grid.querySelectorAll('.wr-card')];
+  const slot = document.getElementById('wr-slot'), bars = document.getElementById('wr-bars');
+  const count = document.getElementById('wr-count');
+  let i = 0;
+  cards.forEach(() => bars.appendChild(document.createElement('span')));
+  function show(n) {
+    i = (n + cards.length) % cards.length;
+    const c = cards[i].cloneNode(true);
+    // An SVG clipPath id must be unique on the page, and the clone repeats it.
+    c.querySelectorAll('[id]').forEach(el => {
+      const old = el.id; el.id = old + '-p';
+      c.querySelectorAll('[clip-path="url(#' + old + ')"]').forEach(x =>
+        x.setAttribute('clip-path', 'url(#' + old + '-p)'));
+    });
+    c.classList.add('wr-enter');
+    c.removeAttribute('tabindex'); c.removeAttribute('role');
+    slot.replaceChildren(c);
+    [...bars.children].forEach((b, k) => b.classList.toggle('on', k <= i));
+    count.textContent = (i + 1) + ' / ' + cards.length;
+  }
+  const next = () => show(i + 1), prev = () => show(i - 1);
+  ['wr-tap-next', 'wr-btn-next'].forEach(id => document.getElementById(id).onclick = next);
+  ['wr-tap-prev', 'wr-btn-prev'].forEach(id => document.getElementById(id).onclick = prev);
+  document.addEventListener('keydown', e => {
+    if (document.querySelector('#modal [data-modal]')) return;
+    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowLeft') prev();
+  });
+  cards.forEach((c, n) => {
+    c.tabIndex = 0; c.setAttribute('role', 'button');
+    c.setAttribute('aria-label', 'Open card ' + (n + 1) + ': ' + c.dataset.name);
+    c.addEventListener('click', () => { show(n); player.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.click(); } });
+  });
+  player.hidden = false;
+  show(0);
+})();
+</script>
+{% endblock %}

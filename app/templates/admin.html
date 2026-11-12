@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Admin · Movie Night{% endblock %}
+{% block content %}
+<h1 class="page-title">Admin</h1>
+
+<section class="panel">
+  <h2>Data</h2>
+  <ul class="counts">
+    {% for name, n in counts.items() %}<li><strong>{{ n }}</strong> {{ name }}</li>{% endfor %}
+  </ul>
+  <p class="muted">Drop Letterboxd export ZIPs in <code>{{ import_dir }}</code>
+     (name them <code>user-anything.zip</code>, e.g. <code>alex-2026-06-25.zip</code>).</p>
+</section>
+
+<section class="panel">
+  <h2>Ingestion</h2>
+  <p class="muted">Order: Sync Plex → Import Letterboxd → Enrich. All are idempotent.</p>
+  {% include "_admin_jobs.html" %}
+  <div id="admin-status"></div>
+</section>
+
+<section class="panel">
+  <h2>Unmatched ({{ unmatched|length }})</h2>
+  <p class="muted">Films that didn't auto-resolve. Look up the TMDb id and pin it.</p>
+  {% if unmatched %}
+  <div class="table-scroll"><table class="unmatched">
+    <thead><tr><th>Title</th><th>Year</th><th>Kind</th><th>User</th><th>Pin TMDb id</th></tr></thead>
+    <tbody>
+    {% for u in unmatched %}
+      <tr>
+        <td>{{ u.title }}</td>
+        <td>{{ u.year or '' }}</td>
+        <td>{{ u.kind }}</td>
+        <td>{{ u.user }}</td>
+        <td>
+          <form hx-post="/admin/resolve" hx-target="#admin-status" class="inline">
+            <input type="hidden" name="title" value="{{ u.title }}">
+            <input type="hidden" name="year" value="{{ u.year or '' }}">
+            <input type="number" name="tmdb_id" placeholder="tmdb id" required>
+            <button type="submit" class="btn">Pin</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="muted">Nothing unmatched.</p>
+  {% endif %}
+</section>
+{% endblock %}

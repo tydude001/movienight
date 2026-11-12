@@ -1,0 +1,50 @@
+# Managed by agentware-git-setup.sh — normalize line endings.
+# Default: treat as text, store + check out with LF.
+* text=auto eol=lf
+
+# Explicit text types (run on Linux/NAS or are cross-platform) -> LF
+*.sh    text eol=lf
+*.bash  text eol=lf
+*.py    text eol=lf
+*.ps1   text eol=lf
+*.psm1  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
+*.cfg   text eol=lf
+*.conf  text eol=lf
+*.ini   text eol=lf
+*.env   text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.js    text eol=lf
+*.sql   text eol=lf
+*.xml   text eol=lf
+Dockerfile* text eol=lf
+
+# Windows-only files that genuinely need CRLF
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1xml text eol=crlf
+
+# Binary / never-touch
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.tar  binary
+*.7z   binary
+*.mp4  binary
+*.mov  binary
+*.db   binary
+*.sqlite binary
+*.sqlite3 binary
+*.etl  binary

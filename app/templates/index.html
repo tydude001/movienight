@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import view_link, poster, view_form %}
+{% block content %}
+{# Everything a filter can change lives in #tonight, so a chip or toggle swaps
+   just this and keeps the header, footer and scroll where they are. #}
+<div id="tonight">
+  {{ view_form(view) }}
+
+  <section class="controls">
+    <nav class="segmented" aria-label="What to show">
+      <a {{ view_link(view.params(scope='all')) }} aria-current="{{ 'true' if view.scope == 'all' else 'false' }}">For both of us <span class="n">{{ counts.all }}</span></a>
+      <a {{ view_link(view.params(scope='plex')) }} aria-current="{{ 'true' if view.scope == 'plex' else 'false' }}">On Plex now <span class="n">{{ counts.plex }}</span></a>
+    </nav>
+    <div class="watching">
+      <span class="eyebrow">Watching</span>
+      {% for p in toggles %}
+        {% if p.target is not none %}
+        <a class="avatar {{ p.cls }}{{ '' if p.on else ' off' }}" {{ view_link(p.target) }}
+           aria-label="{{ p.name }} {{ 'is watching — tap to leave them out' if p.on else 'is out — tap to add them back' }}">{{ p.initial }}</a>
+        {% else %}
+        <span class="avatar {{ p.cls }}" title="{{ p.name }} is watching" aria-label="{{ p.name }} is watching">{{ p.initial }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <div id="hero" aria-live="polite">
+    {% include "_hero.html" %}
+  </div>
+
+  {% if shelf %}
+  <section class="section" aria-labelledby="shelf-title">
+    <div class="section-head">
+      <h2 id="shelf-title">Ready to play right now</h2>
+      <a class="more" {{ view_link(view.params(scope='plex')) }}>All {{ counts.plex }} on Plex →</a>
+    </div>
+    <div class="shelf">
+      {% for f in shelf %}
+      <button type="button" class="shelf-card" data-film-open hx-get="/film/{{ f.tmdb_id }}"
+              hx-target="#modal" hx-swap="innerHTML">
+        {{ poster(f, 92) }}
+        <span>
+          <span class="t">{{ f.title }}</span><br>
+          <span class="s">{{ f.year or '' }}{% if f.runtime %} · {{ f.runtime }} min{% endif %}</span><br>
+          <span class="mono"><strong>{{ f.score }}%</strong> <span class="muted">for {{ 'you both' if view.who == 'both' else 'you' }}</span></span>
+        </span>
+      </button>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section" aria-labelledby="grid-title">
+    <div class="section-head">
+      <div>
+        {% set whofor = 'both of you' if view.who == 'both' else view.who|capitalize %}
+        <h2 id="grid-title">{{ 'On Plex, ranked' if view.scope == 'plex' else 'Ranked' }} for {{ whofor }}</h2>
+        <p>{{ total }} unseen film{{ '' if total == 1 else 's' }}{{ ' you already have' if view.scope == 'plex' else ' across your watchlists' }}.</p>
+        {% if nudge %}
+        <a class="nudge" {{ view_link(nudge.params) }}><span>{{ nudge.label }} for <span class="n">{{ nudge.count - total }} more</span></span> <span aria-hidden="true">→</span></a>
+        {% endif %}
+      </div>
+      <div class="chips" role="group" aria-label="Filters">
+        <a class="chip" {{ view_link(view.params(genre=None)) }} aria-pressed="{{ 'true' if not view.genre else 'false' }}">All</a>
+        {% for g in genres %}
+        <a class="chip" {{ view_link(view.params(genre=None if view.genre == g else g)) }} aria-pressed="{{ 'true' if view.genre == g else 'false' }}">{{ g }}</a>
+        {% endfor %}
+        <span class="sep" aria-hidden="true"></span>
+        <a class="chip" {{ view_link(view.params(runtime=None if view.max_runtime else short_runtime)) }} aria-pressed="{{ 'true' if view.max_runtime else 'false' }}">Under 2 hrs</a>
+        <a class="chip" {{ view_link(view.params(both=None if view.both_lists else 1)) }} aria-pressed="{{ 'true' if view.both_lists else 'false' }}">On both lists</a>
+      </div>
+    </div>
+
+    {% set grid_params = view.params(exclude=film.tmdb_id if film else None) %}
+    <div id="results" hx-get="/picker?{{ grid_params|urlencode }}" hx-trigger="load" hx-swap="innerHTML">
+      <p class="sr-only">Loading…</p>
+      <div class="grid" aria-hidden="true">
+        {% for _ in range(12) %}
+        <article class="card skel">
+          <div class="poster"></div>
+          <div class="bar-line"></div><div class="bar-line short"></div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

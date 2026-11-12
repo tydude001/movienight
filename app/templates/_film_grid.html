@@ -1,0 +1,45 @@
+{% from "_macros.html" import poster, fit_bars, play_icon %}
+{% if not films %}
+  {% if empty_hint %}<div class="empty">{{ empty_hint }}</div>{% endif %}
+{% else %}
+  <div class="grid">
+    {% for f in films %}
+    {% set pct = f.score if f.score is not none else f.match %}
+    <article class="card">
+      {# Poster + meta open the detail card; the veto button stays outside so a
+         veto click doesn't also fire the modal. #}
+      <div class="card-body" data-film-open role="button" tabindex="0"
+           aria-label="{{ f.title }}{% if pct is not none %}, {{ pct }}% match{% endif %}{{ ', on Plex' if f.on_plex else '' }}"
+           hx-get="/film/{{ f.tmdb_id }}" hx-target="#modal" hx-swap="innerHTML"
+           hx-trigger="click, keyup[key=='Enter'||key==' ']">
+        {# Grid posters are ~150-190px wide, so they ask for w185/w342 rather
+           than the stored w500 — at 119 films that's 7 MB of JPEG down to ~1-3.
+           w500 is deliberately absent so a 2x screen tops out at w342. #}
+        <div class="poster">
+          {{ poster(f, 185, '(max-width: 600px) 30vw, 185px', 342) }}
+          {% if pct is not none %}<span class="score-chip" aria-hidden="true">{{ pct }}<small>%</small></span>
+          <span class="sr-only">{{ pct }}% match</span>{% endif %}
+          {% if f.on_plex %}<span class="pill plex">{{ play_icon(8) }} On Plex</span>{% endif %}
+        </div>
+        {{ fit_bars(f) }}
+        {# Grid cards stay slim — title, runtime, whose list. Genres, director
+           and the why all live in the detail card behind the tap. #}
+        <div>
+          <h3 class="t">{{ f.title }}</h3>
+          <p class="sub">{{ f.year or '' }}{% if f.runtime %} · {{ f.runtime }} min{% endif %}
+            <span class="lists">{% for p in people() %}<span class="avatar sm {{ p.cls }}{{ '' if p.key in f.wanted_by else ' off' }}" title="{{ 'On' if p.key in f.wanted_by else 'Not on' }} {{ p.name }}'s watchlist">{{ p.initial }}</span>{% endfor %}</span>
+          </p>
+        </div>
+      </div>
+      {% if vetoable %}<button class="veto" hx-post="/veto" hx-vals='{"tmdb_id": {{ f.tmdb_id }}}'
+              hx-target="closest .card" hx-swap="outerHTML">Veto</button>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% if more %}
+  <div class="showmore">
+    <button type="button" class="btn" hx-get="/picker?{{ more|urlencode }}" hx-target="#results"
+            hx-swap="innerHTML">Show more · {{ total - films|length }} left</button>
+  </div>
+  {% endif %}
+{% endif %}

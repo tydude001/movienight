@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Taste · Movie Night{% endblock %}
+{% block content %}
+{% set ag = data.agreement %}
+<h1 class="page-title">Your taste</h1>
+
+<section class="panel">
+  <h2>Agreement</h2>
+  <p class="muted">{{ ag.count }} films you both rated · avg gap {{ ag.avg_delta }} stars</p>
+  <div class="chart-wrap"><canvas id="scatter"></canvas></div>
+  <div class="cols">
+    <div>
+      <h3>Perfect agreements ({{ ag.perfect_agreements|length }})</h3>
+      <ul class="lite">
+        {% for p in ag.perfect_agreements[:12] %}
+        <li>{{ p.title }} <span class="year">{{ p.year }}</span> — both {{ p[ag.user_a] }}★</li>
+        {% endfor %}
+        {% if ag.perfect_agreements|length > 12 %}
+        <li class="muted">…and {{ ag.perfect_agreements|length - 12 }} more</li>
+        {% endif %}
+      </ul>
+    </div>
+    <div>
+      <h3>Biggest clashes</h3>
+      <ul class="lite">
+        {% for p in ag.biggest_clashes %}
+        <li>{{ p.title }} <span class="year">{{ p.year }}</span> —
+            {{ ag.user_a }} {{ p[ag.user_a] }}★ vs {{ ag.user_b }} {{ p[ag.user_b] }}★</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="panel cols">
+  {% for user, p in data.per_person.items() %}
+  <div class="person-{{ 'a' if loop.first else 'b' }}">
+    <h2>{{ user|capitalize }}</h2>
+    <p class="muted">{{ p.watched_count }} watched · {{ p.rated_count }} rated ·
+       avg {{ p.avg_rating if p.avg_rating is not none else '–' }}★</p>
+    <h3>Top genres</h3>
+    <ul class="lite">{% for g, n in p.top_genres %}<li>{{ g }} · {{ n }}</li>{% endfor %}</ul>
+    <h3>Top directors</h3>
+    <ul class="lite">{% for d, n in p.top_directors %}<li>{{ d }} · {{ n }}</li>{% endfor %}</ul>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2>Watches over time</h2>
+  {% if data.over_time.excluded %}
+  <p class="muted">Hiding bulk-import days ({% for u, n in data.over_time.excluded.items() %}{{ u }}: {{ n }} logged at once{% if not loop.last %}, {% endif %}{% endfor %}) so they don't flatten the chart.</p>
+  {% endif %}
+  <div class="chart-wrap"><canvas id="timeline"></canvas></div>
+</section>
+
+<section class="panel">
+  <h2>Shared blind spots</h2>
+  <p class="muted">On Plex, neither of you has logged these yet.</p>
+  <ul class="lite cols-list">
+    {% for f in data.blind_spots %}
+    <li>{{ f.title }} <span class="year">{{ f.year }}</span></li>
+    {% endfor %}
+  </ul>
+</section>
+
+<script src="/static/chart.umd.min.js"></script>
+<script>
+  // Charts speak the page's palette: first user blue, second amber.
+  Chart.defaults.color = '#a3a1ad';
+  Chart.defaults.borderColor = '#22222b';
+  Chart.defaults.font.family = '"Instrument Sans", system-ui, sans-serif';
+  const ag = {{ ag|tojson }};
+  const ot = {{ data.over_time|tojson }};
+  const ua = ag.user_a, ub = ag.user_b;
+
+  // Ratings sit on a half-star grid, so identical pairs stack on one point.
+  // One dot per pair, sized by how many films share it — "both said 4★"
+  // twelve times should look different from once.
+  const stacks = {};
+  ag.points.forEach(p => {
+    const k = p[ua] + '|' + p[ub];
+    (stacks[k] = stacks[k] || { x: p[ua], y: p[ub], titles: [] }).titles.push(p.title);
+  });
+  const radius = c => 4 + 2.5 * Math.sqrt(c.raw.titles.length - 1);
+
+  new Chart(document.getElementById('scatter'), {
+    type: 'scatter',
+    data: { datasets: [{
+      label: ua + ' vs ' + ub,
+      data: Object.values(stacks),
+      pointRadius: radius, pointHoverRadius: c => radius(c) + 1,
+      pointBackgroundColor: 'rgba(244,241,234,.75)'
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: ua + ' ★' }, min: 0, max: 5 },
+        y: { title: { display: true, text: ub + ' ★' }, min: 0, max: 5 }
+      },
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => {
+          const t = c.raw.titles;
+          const lines = [t.length + (t.length === 1 ? ' film' : ' films') +
+                         ' at ' + c.raw.x + '★ / ' + c.raw.y + '★', ...t.slice(0, 3)];
+          if (t.length > 3) lines.push('…and ' + (t.length - 3) + ' more');
+          return lines;
+        } } } }
+    }
+  });
+
+  const palette = ['#6ca6ff', '#ffb36b'];
+  new Chart(document.getElementById('timeline'), {
+    type: 'line',
+    data: {
+      labels: ot.months,
+      datasets: Object.keys(ot.series).map((u, i) => ({
+        label: u, data: ot.series[u], borderColor: palette[i % 2], tension: .25
+      }))
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+  });
+</script>
+{% endblock %}

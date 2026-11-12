@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Movie Night{% endblock %}</title>
+
+  {# Icons are vendored like htmx and Chart.js — nothing on a render path comes
+     from a third party. `apple-touch-icon.png` is the iPhone homescreen icon:
+     180px, opaque and square, because iOS fills transparency with black and
+     applies its own squircle mask. `apple-mobile-web-app-title` is the label
+     under that icon; iOS clips it around 12 characters, which is why it isn't
+     the page title. Deliberately *no* `apple-mobile-web-app-capable` — the
+     shortcut opens as a normal Safari tab so the back gesture works and
+     /admin's HTTP Basic credentials keep sticking. #}
+  <link rel="icon" href="/static/icons/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/icons/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/static/icons/site.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="Movie Night">
+  <meta name="application-name" content="Movie Night">
+  <meta name="theme-color" content="#0f1115">
+
+  <link rel="preload" href="/static/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/style.css?v={{ css_version }}">
+  <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+  {% set nav = nav|default('') %}
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="/">
+        {# The mark: one circle per person, white where they overlap. #}
+        <svg width="40" height="28" viewBox="0 0 40 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#6ca6ff" stroke-width="2.5"/><circle cx="26" cy="14" r="12" fill="none" stroke="#ffb36b" stroke-width="2.5"/><path d="M20 3.6a12 12 0 0 1 0 20.8a12 12 0 0 1 0-20.8z" fill="#f4f1ea"/></svg>
+        <span class="brand-word">Movie Night</span>
+      </a>
+      <nav class="mainnav" aria-label="Main">
+        <a href="/" {% if nav == 'tonight' %}aria-current="page"{% endif %}>Tonight</a>
+        <a href="/get" {% if nav == 'get' %}aria-current="page"{% endif %}>Get-list</a>
+        <a href="/dashboard" {% if nav == 'taste' %}aria-current="page"{% endif %}>Taste</a>
+        <a href="/wrapped" {% if nav == 'wrapped' %}aria-current="page"{% endif %}>Wrapped</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="foot">
+    <div class="wrap">
+      <span>{% for label, ago in sync_status() %}{{ label }} synced {{ ago }}{% if not loop.last %} · {% endif %}{% else %}No syncs recorded yet{% endfor %}</span>
+      <span>Self-hosted · for the two of us · <a href="/admin">Admin</a></span>
+      <span class="attrib"><img src="/static/tmdb-logo.svg" alt="TMDB" width="68" height="9">
+        This product uses the TMDB API but is not endorsed or certified by TMDB.</span>
+    </div>
+  </footer>
+
+  {# Film detail cards swap in here. Every page gets one so any card, on any
+     page, can open one without its own plumbing. #}
+  <div id="modal"></div>
+  <script>
+    (function () {
+      const modal = document.getElementById('modal');
+      let opener = null;
+      const close = () => {
+        modal.innerHTML = '';
+        if (opener) { opener.focus(); opener = null; }
+      };
+
+      // Skeleton while the card is in flight — htmx replaces it on swap.
+      // Remember which card opened it so close() can hand focus back.
+      document.body.addEventListener('click', e => {
+        const src = e.target.closest('[data-film-open]');
+        if (src) {
+          opener = src;
+          modal.innerHTML = '<div class="modal-backdrop" data-modal>' +
+            '<div class="modal-card skel"><div class="poster"></div>' +
+            '<div class="bar-line"></div><div class="bar-line short"></div></div></div>';
+        }
+      });
+
+      // Space is the other role="button" key (Enter rides the hx-trigger);
+      // swallow its default so the page doesn't scroll under the modal.
+      document.body.addEventListener('keydown', e => {
+        if (e.key === ' ' && e.target.closest && e.target.closest('[data-film-open]')) {
+          e.preventDefault();
+        }
+      });
+
+      // Once the real card lands, focus starts on ✕ so Escape/Tab work
+      // without a click.
+      document.body.addEventListener('htmx:afterSwap', e => {
+        if (e.detail.target === modal) {
+          const x = modal.querySelector('.modal-close');
+          if (x) x.focus();
+        }
+      });
+
+      // Close on the ✕/Close buttons, or on a click that lands on the backdrop
+      // itself (not inside the card).
+      modal.addEventListener('click', e => {
+        if (e.target.closest('[data-close]') || e.target.matches('[data-modal]')) close();
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

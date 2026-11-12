@@ -1,0 +1,37 @@
+{# The admin job buttons and their status box, swapped as one piece so the
+   buttons can be disabled while a job runs. While one is running the wrapper
+   re-fetches itself every second (app/jobs.py); once it finishes, the poll
+   attribute is gone from the new copy and polling stops. #}
+{% set running = job and job.running %}
+{% macro mmss(s) %}{{ s // 60 }}:{{ '%02d' % (s % 60) }}{% endmacro %}
+<div id="admin-jobs"
+     {% if running %}hx-get="/admin/job" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  <div class="admin-actions">
+    {% for name, path, text in [("plex", "/admin/sync-plex", "1 · Sync Plex"),
+                                ("import", "/admin/import", "2 · Import Letterboxd"),
+                                ("enrich", "/admin/enrich", "3 · Enrich (TMDb)")] %}
+    <button class="btn{% if running and job.name == name %} busy{% endif %}"
+            hx-post="{{ path }}" hx-target="#admin-jobs" hx-swap="outerHTML"
+            {% if running %}disabled{% endif %}>
+      {%- if running and job.name == name %}<span class="spin" aria-hidden="true"></span>{% endif %}{{ text -}}
+    </button>
+    {% endfor %}
+  </div>
+
+  {% if running %}
+  <div class="status job running" role="status" aria-live="polite">
+    <div class="job-head"><span class="job-state">● {{ job.label }}…</span><span class="job-timer">{{ mmss(job.elapsed) }}</span></div>
+    <div class="job-bar" aria-hidden="true"></div>
+    {% if job.slow and job.name == "plex" %}
+    <div class="job-note">Plex is slow to answer. It's usually scanning newly added episodes. Waiting up to {{ mmss(plex_timeout) }}.</div>
+    {% endif %}
+  </div>
+  {% elif job %}
+  <div class="status job {{ 'done' if job.ok else 'failed' }}" role="{{ 'status' if job.ok else 'alert' }}">
+    <div class="job-head"><span class="job-state">{{ '✓ Done' if job.ok else '✗ Failed' }}</span><span class="job-timer">{{ 'took' if job.ok else 'after' }} {{ mmss(job.elapsed) }}</span></div>
+    <div>{{ job.msg }}</div>
+  </div>
+  {% else %}
+  <div class="job-last">{% for label, ago in sync_status() %}{{ label }} synced {{ ago }}{% if not loop.last %} · {% endif %}{% else %}No syncs recorded yet{% endfor %}</div>
+  {% endif %}
+</div>

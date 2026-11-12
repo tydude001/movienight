@@ -1,0 +1,39 @@
+services:
+  movienight:
+    build: .
+    container_name: movienight
+    # json-file, capped: some NAS Docker packages default to a
+    # `db` log driver that wedges as its SQLite log grows, and `docker logs`
+    # then returns nothing. Harmless everywhere else.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override the in-container data paths to the mounted volume.
+      DATABASE_PATH: /app/data/watch.db
+      IMPORT_DIR: /app/data/imports
+    # `z` relabels the mounts for SELinux hosts (Fedora, RHEL), which otherwise
+    # refuse the container its own code; Docker ignores it everywhere else.
+    volumes:
+      # Persists SQLite and is the watched folder for Letterboxd export ZIPs.
+      - ./data:/app/data:z
+      # The clone's code over the image's copy, so a code change deploys with a
+      # restart (~15s) instead of a rebuild (minutes). Only a change to
+      # Dockerfile or requirements.txt needs a rebuild. scripts/letterboxd-sync.sh mounts the same
+      # two paths, so the nightly sync never runs older code than the app.
+      - ./app:/app/app:ro,z
+      - ./scripts:/app/scripts:ro,z
+    # No healthcheck here on purpose: the image carries one (Dockerfile,
+    # probing /healthz) and compose inherits it, so `docker compose ps` shows
+    # health and `depends_on: condition: service_healthy` works without this
+    # file restating the interval in a second place.
+    # Bridge mode on purpose: publishes ONLY 8000, no clash with Plex et al.
+    # The app reaches Plex over the LAN IP set in .env (PLEX_BASEURL),
+    # so host networking is neither needed nor wanted here.

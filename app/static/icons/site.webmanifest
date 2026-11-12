@@ -1,0 +1,15 @@
+{
+  "name": "Movie Night",
+  "short_name": "Movie Night",
+  "description": "Picks a movie that's actually on Plex from two Letterboxd watchlists.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

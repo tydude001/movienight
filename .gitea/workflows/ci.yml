@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          python3 --version
+          # PEP 668: the runner image's Python is externally managed, and the
+          # job container is thrown away after the run — installing into it is fine.
+          python3 -m pip install --quiet --break-system-packages -r requirements.txt -r requirements-dev.txt
+      - name: Ruff
+        run: python3 -m ruff check .
+      - name: Pytest
+        # conftest builds a throwaway SQLite DB per test under pytest's tmp_path,
+        # which follows TMPDIR. On a runner with a slow disk ~91 fsyncs dominate the
+        # job: 88 passed in 1799s on one such runner vs ~1.4s locally.
+        # /dev/shm is a 64 MB tmpfs; one full run measured 5.4 MB across 91 DBs.
+        env:
+          TMPDIR: /dev/shm
+        run: python3 -m pytest

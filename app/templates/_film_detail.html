@@ -1,0 +1,99 @@
+{# Film detail sheet: scores, each person's fit, and the long form of the
+   shared match %. Swapped into #modal (see base.html) by any tappable card. #}
+{% from "_macros.html" import poster, play_icon, check_icon %}
+<div class="modal-backdrop" data-modal>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-label="{{ film.title }}">
+    <button class="modal-close" data-close aria-label="Close">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+
+    <div class="detail-head">
+      <div class="hero-art">
+        {% if film.poster %}<img src="{{ film.poster }}" alt="Poster for {{ film.title }}">
+        {% else %}<div class="noposter">{{ film.title[:1] }}</div>{% endif %}
+      </div>
+      <div class="detail-meta">
+        <div class="tags">
+          {% if film.on_plex %}<span class="pill plex">{{ play_icon() }} On Plex{% if film.added %} since {{ film.added }}{% endif %}</span>
+          {% else %}<span class="pill missing">Not on Plex yet</span>{% endif %}
+          {% if film.wanted_by|length == users|length %}<span class="pill">On both watchlists</span>
+          {% elif film.wanted_by %}<span class="pill">On {{ film.wanted_by|map('capitalize')|join(', ') }}'s watchlist</span>{% endif %}
+          {% if film.seen_by %}<span class="pill">Seen by {{ film.seen_by|map('capitalize')|join(' & ') }}</span>
+          {% else %}<span class="pill">Neither of you has seen it</span>{% endif %}
+          {% if film.vetoes %}<span class="pill">Skipped {{ film.vetoes }}×</span>{% endif %}
+        </div>
+        <h2>{{ film.title }}</h2>
+        <p class="meta">
+          {%- set bits = [film.year, (film.runtime ~ ' min') if film.runtime else None, film.director, (film.genres or '').replace(', ', ' / ') or None] -%}
+          {{ bits|select|join('  ·  ') }}
+        </p>
+
+        <div class="detail-actions">
+          {% if film.on_plex %}
+          <button class="btn primary" hx-post="/watched" hx-vals='{"tmdb_id": {{ film.tmdb_id }}}'
+                  hx-target="closest .modal-card" hx-swap="innerHTML">{{ check_icon() }} We watched it</button>
+          {% else %}
+          {% set tmdb_id = film.tmdb_id %}{% set on = film.on_get_list %}{% set primary = true %}
+          {% include "_get_button.html" %}
+          {% endif %}
+          <a class="btn" href="https://www.themoviedb.org/movie/{{ film.tmdb_id }}"
+             target="_blank" rel="noopener">TMDb ↗</a>
+        </div>
+
+        {# Cached scores render inline; a stale/missing set is fetched after
+           paint so a slow third party never delays the card. #}
+        {% if scores %}
+          {% include "_film_scores.html" %}
+        {% else %}
+        <div class="scores pending" hx-get="/film/{{ film.tmdb_id }}/scores"
+             hx-trigger="load" hx-swap="outerHTML">Fetching scores…</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <section class="why-block">
+      <h3>Why it's a match for you two</h3>
+      {% set pa, pb = people() %}
+      <div class="people">
+        {% for p in [pa] %}{% include "_person_fit.html" %}{% endfor %}
+        <div class="venn">
+          <div class="venn-art" role="img" aria-label="Fit for both: {{ film.pair }} percent. {% for p in people() %}{{ p.name }} {{ film.fits[p.key] }}. {% endfor %}">
+            <i class="a"></i><i class="b"></i>
+            <span class="venn-num">{{ film.pair }}<small>%</small></span>
+          </div>
+          <p>For both of you. Leans toward whoever's less keen{% if film.wanted_by|length == users|length %}, plus a bump for being on both your lists{% endif %}.</p>
+        </div>
+        {% for p in [pb] %}{% include "_person_fit.html" %}{% endfor %}
+      </div>
+
+      <details class="breakdown">
+        <summary>Your shared taste, genre by genre</summary>
+        <p class="headline">{{ why.headline }}</p>
+        <div class="fit-bars">
+          {% for f in why.genres %}
+          {% set w = ([f.share|abs, 1.0]|min * 100)|int %}
+          <div class="fit">
+            <span class="fit-label">{{ f.label }}</span>
+            <span class="bar"><i class="{{ 'neg' if f.affinity < 0 else 'pos' }}" style="width: {{ w }}%"></i></span>
+            <span class="fit-pts">{{ '%+.1f'|format(f.points) }}</span>
+          </div>
+          {% endfor %}
+          {% if why.director %}
+          {% set w = ([why.director.share|abs, 1.0]|min * 100)|int %}
+          <div class="fit">
+            <span class="fit-label">Dir. {{ why.director.label }}</span>
+            <span class="bar"><i class="{{ 'neg' if why.director.affinity < 0 else 'pos' }}" style="width: {{ w }}%"></i></span>
+            <span class="fit-pts">{{ '%+.1f'|format(why.director.points) }}</span>
+          </div>
+          {% endif %}
+        </div>
+        <p class="muted">Genres carry 70% of a score, the director 30%, measured against
+           every film you've logged — 4★+ counts twice, ≤2★ counts against. Each of
+           you is scored on your own history; this is the two histories pooled.</p>
+        <ul class="lite notes">
+          {% for n in why.notes %}<li>{{ n }}</li>{% endfor %}
+        </ul>
+      </details>
+    </section>
+  </div>
+</div>

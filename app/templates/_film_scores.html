@@ -1,0 +1,42 @@
+{# External scores strip. Rendered inline when cached, or swapped in by the
+   detail card's lazy load. Every source is optional — show what we have. #}
+{% if not scores or not scores.any_scores %}
+<div class="scores none">No external scores available for this one.</div>
+{% else %}
+<div class="scores">
+  {% if scores.rt_score is not none %}
+  <div class="score rt">
+    <span class="score-src">Rotten Tomatoes</span>
+    <span class="score-val">{{ scores.rt_score }}%</span>
+  </div>
+  {% endif %}
+  {% if scores.lb_score is not none %}
+  <div class="score lb">
+    <span class="score-src">
+      {% if scores.lb_url %}<a href="{{ scores.lb_url }}" target="_blank" rel="noopener">Letterboxd ↗</a>
+      {% else %}Letterboxd{% endif %}
+      {% if scores.lb_votes %}<em>{{ '{:,}'.format(scores.lb_votes) }}</em>{% endif %}
+    </span>
+    <span class="score-val">{{ scores.lb_score }}<small>/5</small></span>
+  </div>
+  {% endif %}
+  {% if scores.imdb_score is not none %}
+  <div class="score imdb">
+    <span class="score-src">IMDb</span>
+    <span class="score-val">{{ scores.imdb_score }}<small>/10</small></span>
+  </div>
+  {% endif %}
+  {% if scores.metacritic is not none %}
+  <div class="score mc">
+    <span class="score-src">Metacritic</span>
+    <span class="score-val">{{ scores.metacritic }}</span>
+  </div>
+  {% endif %}
+  {% if scores.tmdb_score is not none %}
+  <div class="score tmdb">
+    <span class="score-src">TMDb{% if scores.tmdb_votes %} <em>{{ '{:,}'.format(scores.tmdb_votes) }}</em>{% endif %}</span>
+    <span class="score-val">{{ scores.tmdb_score }}<small>/10</small></span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}

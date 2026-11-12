@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "_macros.html" import poster %}
+{% block title %}Get-list · Movie Night{% endblock %}
+{% block content %}
+<h1 class="page-title">The get-list</h1>
+
+{% macro film_row(f) -%}
+<li class="row">
+  <div class="art" data-film-open hx-get="/film/{{ f.tmdb_id }}" hx-target="#modal" hx-swap="innerHTML">{{ poster(f, 92) }}</div>
+  <div class="info">
+    <div class="t" data-film-open hx-get="/film/{{ f.tmdb_id }}" hx-target="#modal" hx-swap="innerHTML">{{ f.title }} <span class="year">{{ f.year or '' }}</span></div>
+    <div class="s">{% if f.runtime %}{{ f.runtime }} min · {% endif %}{{ 'Both your lists' if f.wanted_by|length > 1 else 'On ' ~ f.wanted_by[0]|capitalize ~ "'s list" }}</div>
+  </div>
+  <span class="num" title="Likely for both">{{ f.score }}</span>
+  {% set tmdb_id = f.tmdb_id %}{% set on = f.on_get_list %}{% set primary = false %}
+  {% include "_get_button.html" %}
+</li>
+{%- endmacro %}
+
+<section class="section" aria-labelledby="marked-title">
+  <div class="section-head">
+    <div>
+      <h2 id="marked-title">Marked to get</h2>
+      <p>Films you've flagged that still aren't on Plex. They drop off by themselves once a Plex sync finds them.</p>
+    </div>
+  </div>
+  {% if marked %}
+  <ul class="rows">{% for f in marked %}{{ film_row(f) }}{% endfor %}</ul>
+  {% else %}
+  <div class="empty">Nothing marked yet. Tap “Add to the get-list” on anything below, or on any film that isn't on Plex.</div>
+  {% endif %}
+</section>
+
+<section class="section" aria-labelledby="worth-title">
+  <div class="section-head">
+    <div>
+      <h2 id="worth-title">Worth getting{% if view.genre %}: {{ view.genre }}{% endif %}</h2>
+      <p>Wanted by at least one of you, not on Plex, ranked by how likely you both are to enjoy it.</p>
+    </div>
+    <div class="chips" role="group" aria-label="Genre">
+      <a class="chip" href="/get" aria-pressed="{{ 'true' if not view.genre else 'false' }}">All</a>
+      {% for g in genres %}
+      <a class="chip" href="/get{% if view.genre != g %}?genre={{ g|urlencode }}{% endif %}" aria-pressed="{{ 'true' if view.genre == g else 'false' }}">{{ g }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% if worth %}
+  <ul class="rows">{% for f in worth %}{{ film_row(f) }}{% endfor %}</ul>
+  {% else %}
+  <div class="empty">Everything you both want is already on Plex, or on the list above.</div>
+  {% endif %}
+</section>
+{% endblock %}

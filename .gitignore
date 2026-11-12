@@ -1,0 +1,18 @@
+.env
+data/*
+!data/.gitkeep
+*.db
+*.db-journal
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+.gitmessage
+
+# A design-system export from a restyle that was rejected — kept locally,
+# never shipped in the image.
+marigold-press-claude-export.zip
+
+# A deploy script's marker that a rebuild is owed; never part of the repo.
+.rebuild-pending

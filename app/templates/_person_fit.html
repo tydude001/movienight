@@ -1,0 +1,16 @@
+{# One person's card on the detail sheet. Needs p (from people()), film,
+   personal and reasons. #}
+{% set ex = personal[p.key] %}
+<div class="person {{ p.cls }}">
+  <div class="person-head">
+    <span class="name"><span class="avatar {{ p.cls }}" aria-hidden="true">{{ p.initial }}</span>{{ p.name }}</span>
+    <span class="pct">{{ film.fits[p.key] }}<small>%</small></span>
+  </div>
+  <p>{{ reasons[p.key] }}</p>
+  {% if ex.has_signal %}
+  <ul class="lite notes">
+    {# Two more lines at most — the full genre-by-genre lives in the breakdown. #}
+    {% for n in (ex.notes|reject('equalto', reasons[p.key])|list)[:2] %}<li>{{ n }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>

@@ -1,0 +1,12 @@
+{% from "_macros.html" import spin_icon %}
+<div class="done">
+  <p class="eyebrow">Logged for both of you</p>
+  <h2>{{ title }}</h2>
+  <p class="muted">Marked watched today — it drops out of the pool and feeds the taste model.</p>
+  {% if view %}
+  <button type="button" class="btn primary" hx-post="/spin" hx-include="#view"
+          hx-target="#hero" hx-indicator="#hero">{{ spin_icon() }} Pick the next one</button>
+  {% else %}
+  <button type="button" class="btn" data-close>Close</button>
+  {% endif %}
+</div>

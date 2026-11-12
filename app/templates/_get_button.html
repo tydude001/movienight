@@ -1,0 +1,9 @@
+{# Add to / take off the get-list; swaps itself. Needs tmdb_id and on. #}
+<button type="button" class="btn{{ ' primary' if primary and not on else '' }}"
+        hx-post="/get/{{ tmdb_id }}" hx-swap="outerHTML" aria-pressed="{{ 'true' if on else 'false' }}">
+  {%- if on -%}
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg> <span class="label">On the get-list</span>
+  {%- else -%}
+  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <span class="label">Add to the get-list</span>
+  {%- endif -%}
+</button>
