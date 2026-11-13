@@ -68,8 +68,8 @@ single-quoted so compose reads it literally, and checks the new login works.
 
 Open work is tracked outside the repo, never in this file.
 
-CI: `.github/workflows/ci.yml` and `.gitea/workflows/ci.yml` both run ruff +
-pytest on every push. Keep `ruff check .` clean — CI lints the whole tree, not
+CI: `.github/workflows/ci.yml` runs ruff + pytest on GitHub, on every push to
+`main` and every pull request. It is the only CI. Keep `ruff check .` clean — CI lints the whole tree, not
 just changed files like a pre-push hook does. The Pytest step sets
 `TMPDIR=/dev/shm` (the suite makes a temp SQLite DB per test, and on a slow disk
 that dominates the run); don't drop it, and give any new suite the same.
